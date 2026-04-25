@@ -127,163 +127,80 @@
     // --- LUMIÈRE AMBIANTE FAIBLE ---
     const ambient = new THREE.AmbientLight(0x222222, 0.4);
     scene.add(ambient);
-    const dimLight = new THREE.DirectionalLight(0xffffff, 0.15);
-    dimLight.position.set(3, 5, 2);
-    scene.add(dimLight);
 
     // --- LAMPE TORCHE (SPOTLIGHT + POINTLIGHT) ---
     const torchGroup = new THREE.Group();
     camera.add(torchGroup);
     scene.add(camera);
 
-    const torchSpot = new THREE.SpotLight(0xffffff, 7, 50, Math.PI / 8, 0.3, 1);
+    const torchSpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 6, 0.4, 1.5);
     torchSpot.castShadow = true;
     torchSpot.shadow.mapSize.width = 1024;
     torchSpot.shadow.mapSize.height = 1024;
-    torchSpot.position.set(0.25, -0.15, -0.35);
+    torchSpot.position.set(0.2, -0.1, -0.3);
     torchGroup.add(torchSpot);
 
     const torchTarget = new THREE.Object3D();
-    torchTarget.position.set(0, -0.1, -10);
+    torchTarget.position.set(0, -0.1, -2);
     torchGroup.add(torchTarget);
     torchSpot.target = torchTarget;
 
     const torchPoint = new THREE.PointLight(0xfff4d0, 0.6, 5);
-    torchSpot.position.set(0.25, -0.15, -0.35);
+    torchPoint.position.set(0.2, -0.1, -0.3);
     torchGroup.add(torchPoint);
 
-   // --- MAIN RÉALISTE + TORCHE (ajout sans modifier le reste) ---
-const handGroup = new THREE.Group();
-camera.add(handGroup);
+    // --- MAIN STYLISÉE QUI TIENT LA LAMPE ---
+    const handGroup = new THREE.Group();
+    handGroup.position.set(0.25, -0.25, -0.6);
+    handGroup.rotation.x = -0.3;
+    torchGroup.add(handGroup);
 
-// position de la main par rapport à la caméra
-handGroup.position.set(0.25, -0.25, -0.6);
-handGroup.rotation.x = -0.3;
+    const skinColor = 0xd8b090;
 
-const skinMat = new THREE.MeshStandardMaterial({
-    color: 0xd8b090,
-    roughness: 0.55,
-    metalness: 0.05
-});
+    // Paume
+    const palmGeo = new THREE.BoxGeometry(0.18, 0.1, 0.12);
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+    const palm = new THREE.Mesh(palmGeo, skinMat);
+    palm.castShadow = true;
+    palm.receiveShadow = true;
+    handGroup.add(palm);
 
-// Paume
-const palm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.18, 0.1, 0.12),
-    skinMat
-);
-palm.castShadow = true;
-palm.receiveShadow = true;
-handGroup.add(palm);
+    // Doigts (4 blocs)
+    const fingerGeo = new THREE.BoxGeometry(0.04, 0.09, 0.06);
+    const fingerOffsets = [-0.06, -0.02, 0.02, 0.06];
+    fingerOffsets.forEach(x => {
+        const f = new THREE.Mesh(fingerGeo, skinMat);
+        f.position.set(x, -0.05, 0.03);
+        f.castShadow = true;
+        f.receiveShadow = true;
+        handGroup.add(f);
+    });
 
-// Poignet
-const wrist = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.06, 0.12, 12),
-    skinMat
-);
-wrist.position.set(0, 0.09, -0.02);
-wrist.rotation.x = Math.PI / 2;
-wrist.castShadow = true;
-handGroup.add(wrist);
+    // Poignet
+    const wristGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const wrist = new THREE.Mesh(wristGeo, skinMat);
+    wrist.position.set(0, 0.09, -0.02);
+    wrist.castShadow = true;
+    wrist.receiveShadow = true;
+    handGroup.add(wrist);
 
-// Doigts
-function createFinger(offsetX, isThumb = false) {
-    const finger = new THREE.Group();
+    // Lampe torche (simple cylindre + tête)
+    const torchBodyGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 16);
+    const torchMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.4, roughness: 0.4 });
+    const torchBody = new THREE.Mesh(torchBodyGeo, torchMat);
+    torchBody.rotation.z = Math.PI / 2;
+    torchBody.position.set(0.12, 0, -0.02);
+    torchBody.castShadow = true;
+    torchBody.receiveShadow = true;
+    handGroup.add(torchBody);
 
-    const l1 = isThumb ? 0.05 : 0.07;
-    const l2 = isThumb ? 0.04 : 0.06;
-    const l3 = isThumb ? 0.03 : 0.05;
-
-    const r1 = isThumb ? 0.015 : 0.013;
-    const r2 = isThumb ? 0.013 : 0.011;
-
-    const ph1 = new THREE.Mesh(
-        new THREE.CylinderGeometry(r1, r1, l1, 10),
-        skinMat
-    );
-    ph1.rotation.z = Math.PI / 2;
-    ph1.position.set(0, -0.03, 0.04);
-    ph1.castShadow = true;
-    finger.add(ph1);
-
-    const ph2 = new THREE.Mesh(
-        new THREE.CylinderGeometry(r1 * 0.9, r1 * 0.8, l2, 10),
-        skinMat
-    );
-    ph2.rotation.z = Math.PI / 2;
-    ph2.position.set(l1, -0.03, 0.04);
-    ph2.castShadow = true;
-    finger.add(ph2);
-
-    const ph3 = new THREE.Mesh(
-        new THREE.CylinderGeometry(r1 * 0.8, r2, l3, 10),
-        skinMat
-    );
-    ph3.rotation.z = Math.PI / 2;
-    ph3.position.set(l1 + l2, -0.03, 0.04);
-    ph3.castShadow = true;
-    finger.add(ph3);
-
-    const tip = new THREE.Mesh(
-        new THREE.SphereGeometry(r2 * 1.1, 10, 10),
-        skinMat
-    );
-    tip.position.set(l1 + l2 + l3, -0.03, 0.04);
-    tip.castShadow = true;
-    finger.add(tip);
-
-    finger.position.x = offsetX;
-    handGroup.add(finger);
-}
-
-// 5 doigts
-createFinger(-0.07, true);  // pouce
-createFinger(-0.04);
-createFinger(-0.01);
-createFinger(0.02);
-createFinger(0.05);
-
-// --- TORCHE attachée à la main ---
-const torchGroup = new THREE.Group();
-torchGroup.position.set(0.15, -0.05, -0.25);
-torchGroup.rotation.x = -0.15;
-handGroup.add(torchGroup);
-
-const torchMat = new THREE.MeshStandardMaterial({
-    color: 0x222222,
-    roughness: 0.4,
-    metalness: 0.6
-});
-
-const torchBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.05, 0.35, 16),
-    torchMat
-);
-torchBody.rotation.z = Math.PI / 2;
-torchBody.castShadow = true;
-torchGroup.add(torchBody);
-
-const torchHead = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.09, 0.12, 16),
-    torchMat
-);
-torchHead.rotation.z = Math.PI / 2;
-torchHead.position.set(0.18, 0, 0);
-torchHead.castShadow = true;
-torchGroup.add(torchHead);
-
-const torchLight = new THREE.SpotLight(0xfff2c5, 2.2, 12, Math.PI / 5, 0.4, 1.2);
-torchLight.position.set(0.22, 0, 0);
-torchLight.target.position.set(3, -0.2, -2);
-torchGroup.add(torchLight);
-torchGroup.add(torchLight.target);
-
-const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xfff2c5, transparent: true, opacity: 0.6 })
-);
-glow.position.set(0.24, 0, 0);
-torchGroup.add(glow);
-
+    const torchHeadGeo = new THREE.CylinderGeometry(0.055, 0.04, 0.08, 16);
+    const torchHead = new THREE.Mesh(torchHeadGeo, new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.3 }));
+    torchHead.rotation.z = Math.PI / 2;
+    torchHead.position.set(0.24, 0, -0.02);
+    torchHead.castShadow = true;
+    torchHead.receiveShadow = true;
+    handGroup.add(torchHead);
 
     // --- GROTTE (SALLE + PIERRES) ---
     const caveMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1, metalness: 0 });
