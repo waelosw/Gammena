@@ -2,78 +2,306 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Jeu 3D HTML</title>
+    <title>Grotte - Jeu 3D Mobile</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: #000;
+            touch-action: none;
         }
+
+        #ui {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
         #info {
-            position: absolute;
+            position: fixed;
             top: 10px;
             left: 10px;
             color: white;
-            font-family: Arial;
-            font-size: 18px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-shadow: 0 0 5px #000;
+        }
+
+        #win {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0f0;
+            font-family: Arial, sans-serif;
+            font-size: 28px;
+            text-shadow: 0 0 10px #000;
+            display: none;
         }
     </style>
 </head>
 <body>
 
-<div id="info">Flèches = bouger le cube</div>
+<div id="info">
+    Trouve les 4 fragments :<br>
+    Vert, Rouge, Jaune, Bleu
+</div>
+<div id="win">Tu as trouvé tous les fragments !</div>
+
+<div id="ui">
+    <!-- Déplacement -->
+    <div class="controls-group">
+        <div class="btn-row">
+            <div class="btn" data-action="forward">▲</div>
+        </div>
+        <div class="btn-row">
+            <div class="btn" data-action="left">◀</div>
+            <div class="btn" data-action="backward">▼</div>
+            <div class="btn" data-action="right">▶</div>
+        </div>
+    </div>
+
+    <!-- Rotation -->
+    <div class="controls-group">
+        <div class="btn-row">
+            <div class="btn" data-action="turnLeft">⟲</div>
+            <div class="btn" data-action="turnRight">⟳</div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-    // --- SCENE ---
+    // --- SCÈNE, CAMÉRA, RENDERER ---
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
-    // --- CAMERA ---
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 5;
+    const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+    );
+    camera.position.set(0, 1.6, 0); // hauteur "humaine"
 
-    // --- RENDERER ---
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // --- CUBE ---
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    // --- LAMPE (LUMIÈRE) ---
+    const lamp = new THREE.PointLight(0xffffff, 2, 15);
+    lamp.position.set(0, 1.6, 0);
+    scene.add(lamp);
 
-    // --- LUMIÈRE ---
-    const light = new THREE.PointLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    // --- GROTTE (SIMPLE SALLE FERMÉE) ---
+    const caveMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1 });
 
-    // --- CONTROLES ---
-    let speedX = 0;
-    let speedY = 0;
+    // Sol
+    const floorGeo = new THREE.PlaneGeometry(20, 20);
+    const floor = new THREE.Mesh(floorGeo, caveMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
 
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowUp") speedY = 0.05;
-        if (e.key === "ArrowDown") speedY = -0.05;
-        if (e.key === "ArrowLeft") speedX = -0.05;
-        if (e.key === "ArrowRight") speedX = 0.05;
+    // Plafond
+    const ceil = new THREE.Mesh(floorGeo, caveMaterial);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.y = 4;
+    scene.add(ceil);
+
+    // Murs
+    const wallGeo = new THREE.PlaneGeometry(20, 4);
+
+    const wall1 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall1.position.set(0, 2, -10);
+    scene.add(wall1);
+
+    const wall2 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall2.position.set(0, 2, 10);
+    wall2.rotation.y = Math.PI;
+    scene.add(wall2);
+
+    const wall3 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall3.position.set(-10, 2, 0);
+    wall3.rotation.y = Math.PI / 2;
+    scene.add(wall3);
+
+    const wall4 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall4.position.set(10, 2, 0);
+    wall4.rotation.y = -Math.PI / 2;
+    scene.add(wall4);
+
+    // --- FRAGMENTS DANS LES COINS ---
+    const fragments = [];
+    const fragmentData = [
+        { color: 0x00ff00, position: new THREE.Vector3(-8, 0.5, -8) }, // vert
+        { color: 0xff0000, position: new THREE.Vector3(8, 0.5, -8) },  // rouge
+        { color: 0xffff00, position: new THREE.Vector3(-8, 0.5, 8) },  // jaune
+        { color: 0x0000ff, position: new THREE.Vector3(8, 0.5, 8) }    // bleu
+    ];
+
+    const fragmentGeo = new THREE.SphereGeometry(0.4, 16, 16);
+
+    fragmentData.forEach(data => {
+        const mat = new THREE.MeshStandardMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.6 });
+        const mesh = new THREE.Mesh(fragmentGeo, mat);
+        mesh.position.copy(data.position);
+        scene.add(mesh);
+        fragments.push({ mesh, collected: false });
     });
 
-    document.addEventListener("keyup", () => {
-        speedX = 0;
-        speedY = 0;
+    let collectedCount = 0;
+    const infoDiv = document.getElementById('info');
+    const winDiv = document.getElementById('win');
+
+    function updateInfo() {
+        infoDiv.innerHTML = `Fragments trouvés : ${collectedCount}/4<br>Vert, Rouge, Jaune, Bleu`;
+    }
+    updateInfo();
+
+    // --- CONTRÔLES MOBILES ---
+    const controlsState = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        turnLeft: false,
+        turnRight: false
+    };
+
+    const speed = 0.08;
+    const rotSpeed = 0.04;
+
+    function setControl(action, active) {
+        controlsState[action] = active;
+    }
+
+    // Gestion des boutons tactiles
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        const action = btn.getAttribute('data-action');
+
+        const start = (e) => {
+            e.preventDefault();
+            setControl(action, true);
+        };
+        const end = (e) => {
+            e.preventDefault();
+            setControl(action, false);
+        };
+
+        btn.addEventListener('touchstart', start);
+        btn.addEventListener('touchend', end);
+        btn.addEventListener('touchcancel', end);
+
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('mouseleave', end);
     });
+
+    // --- MOUVEMENT DU JOUEUR ---
+    const playerPosition = camera.position;
+    let playerRotationY = 0;
+
+    function movePlayer() {
+        // Rotation
+        if (controlsState.turnLeft) {
+            playerRotationY += rotSpeed;
+        }
+        if (controlsState.turnRight) {
+            playerRotationY -= rotSpeed;
+        }
+
+        camera.rotation.set(0, playerRotationY, 0);
+
+        // Direction avant
+        const forward = new THREE.Vector3(
+            -Math.sin(playerRotationY),
+            0,
+            -Math.cos(playerRotationY)
+        );
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate();
+
+        let move = new THREE.Vector3();
+
+        if (controlsState.forward) move.add(forward);
+        if (controlsState.backward) move.sub(forward);
+        if (controlsState.left) move.sub(right);
+        if (controlsState.right) move.add(right);
+
+        if (move.lengthSq() > 0) {
+            move.normalize().multiplyScalar(speed);
+
+            const newPos = playerPosition.clone().add(move);
+
+            // Limites de la grotte (un peu avant les murs)
+            const limit = 9;
+            newPos.x = Math.max(-limit, Math.min(limit, newPos.x));
+            newPos.z = Math.max(-limit, Math.min(limit, newPos.z));
+
+            playerPosition.copy(newPos);
+        }
+
+        // La lampe suit la caméra
+        lamp.position.copy(camera.position);
+    }
+
+    // --- CHECK COLLISION AVEC FRAGMENTS ---
+    function checkFragments() {
+        fragments.forEach(f => {
+            if (f.collected) return;
+            const dist = f.mesh.position.distanceTo(camera.position);
+            if (dist < 1.2) {
+                f.collected = true;
+                scene.remove(f.mesh);
+                collectedCount++;
+                updateInfo();
+                if (collectedCount === 4) {
+                    winDiv.style.display = 'block';
+                }
+            }
+        });
+    }
 
     // --- ANIMATION ---
     function animate() {
         requestAnimationFrame(animate);
 
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
-
-        cube.position.x += speedX;
-        cube.position.y += speedY;
+        movePlayer();
+        checkFragments();
 
         renderer.render(scene, camera);
     }
@@ -81,7 +309,7 @@
     animate();
 
     // --- ADAPTATION ÉCRAN ---
-    window.addEventListener("resize", () => {
+    window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
