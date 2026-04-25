@@ -136,20 +136,20 @@
     camera.add(torchGroup);
     scene.add(camera);
 
-    const torchSpot = new THREE.SpotLight(0xffffff, 4.5, 35, Math.PI / 7, 0.35, 1.2);
+    const torchSpot = new THREE.SpotLight(0xffffff, 7, 50, Math.PI / 8, 0.3, 1);
     torchSpot.castShadow = true;
     torchSpot.shadow.mapSize.width = 1024;
     torchSpot.shadow.mapSize.height = 1024;
-    torchSpot.position.set(0.3, -0.15, -0.4);
+    torchSpot.position.set(0.25, -0.15, -0.35);
     torchGroup.add(torchSpot);
 
     const torchTarget = new THREE.Object3D();
-    torchTarget.position.set(0, -0.1, -5);
+    torchTarget.position.set(0, -0.1, -10);
     torchGroup.add(torchTarget);
     torchSpot.target = torchTarget;
 
     const torchPoint = new THREE.PointLight(0xfff4d0, 0.6, 5);
-    torchSpot.position.set(0.3, -0.15, -0.4);
+    torchSpot.position.set(0.25, -0.15, -0.35);
     torchGroup.add(torchPoint);
 
    // --- MAIN RÉALISTE + TORCHE (ajout sans modifier le reste) ---
