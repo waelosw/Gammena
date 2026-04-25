@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Grotte - Jeu 3D Mobile</title>
+    <title>Grotte - Jeu 3D Mobile (Torch + Gemmes)</title>
     <style>
         body {
             margin: 0;
@@ -41,7 +41,7 @@
             height: 60px;
             border-radius: 50%;
             border: 2px solid #fff;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             color: #fff;
             font-size: 20px;
             display: flex;
@@ -76,10 +76,10 @@
 <body>
 
 <div id="info">
-    Trouve les 4 fragments :<br>
-    Vert, Rouge, Jaune, Bleu
+    Trouve les 4 gemmes :<br>
+    Verte, Rouge, Jaune, Bleue
 </div>
-<div id="win">Tu as trouvé tous les fragments !</div>
+<div id="win">Tu as trouvé toutes les gemmes !</div>
 
 <div id="ui">
     <!-- Déplacement -->
@@ -120,26 +120,103 @@
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // --- LAMPE (LUMIÈRE) ---
-    const lamp = new THREE.PointLight(0xffffff, 2, 15);
-    lamp.position.set(0, 1.6, 0);
-    scene.add(lamp);
+    // --- LUMIÈRE AMBIANTE FAIBLE ---
+    const ambient = new THREE.AmbientLight(0x222222, 0.4);
+    scene.add(ambient);
 
-    // --- GROTTE (SIMPLE SALLE FERMÉE) ---
-    const caveMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1 });
+    // --- LAMPE TORCHE (SPOTLIGHT + POINTLIGHT) ---
+    const torchGroup = new THREE.Group();
+    camera.add(torchGroup);
+    scene.add(camera);
+
+    const torchSpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 6, 0.4, 1.5);
+    torchSpot.castShadow = true;
+    torchSpot.shadow.mapSize.width = 1024;
+    torchSpot.shadow.mapSize.height = 1024;
+    torchSpot.position.set(0.2, -0.1, -0.3);
+    torchGroup.add(torchSpot);
+
+    const torchTarget = new THREE.Object3D();
+    torchTarget.position.set(0, -0.1, -2);
+    torchGroup.add(torchTarget);
+    torchSpot.target = torchTarget;
+
+    const torchPoint = new THREE.PointLight(0xfff4d0, 0.6, 5);
+    torchPoint.position.set(0.2, -0.1, -0.3);
+    torchGroup.add(torchPoint);
+
+    // --- MAIN STYLISÉE QUI TIENT LA LAMPE ---
+    const handGroup = new THREE.Group();
+    handGroup.position.set(0.25, -0.25, -0.6);
+    handGroup.rotation.x = -0.3;
+    torchGroup.add(handGroup);
+
+    const skinColor = 0xd8b090;
+
+    // Paume
+    const palmGeo = new THREE.BoxGeometry(0.18, 0.1, 0.12);
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+    const palm = new THREE.Mesh(palmGeo, skinMat);
+    palm.castShadow = true;
+    palm.receiveShadow = true;
+    handGroup.add(palm);
+
+    // Doigts (4 blocs)
+    const fingerGeo = new THREE.BoxGeometry(0.04, 0.09, 0.06);
+    const fingerOffsets = [-0.06, -0.02, 0.02, 0.06];
+    fingerOffsets.forEach(x => {
+        const f = new THREE.Mesh(fingerGeo, skinMat);
+        f.position.set(x, -0.05, 0.03);
+        f.castShadow = true;
+        f.receiveShadow = true;
+        handGroup.add(f);
+    });
+
+    // Poignet
+    const wristGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const wrist = new THREE.Mesh(wristGeo, skinMat);
+    wrist.position.set(0, 0.09, -0.02);
+    wrist.castShadow = true;
+    wrist.receiveShadow = true;
+    handGroup.add(wrist);
+
+    // Lampe torche (simple cylindre + tête)
+    const torchBodyGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 16);
+    const torchMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.4, roughness: 0.4 });
+    const torchBody = new THREE.Mesh(torchBodyGeo, torchMat);
+    torchBody.rotation.z = Math.PI / 2;
+    torchBody.position.set(0.12, 0, -0.02);
+    torchBody.castShadow = true;
+    torchBody.receiveShadow = true;
+    handGroup.add(torchBody);
+
+    const torchHeadGeo = new THREE.CylinderGeometry(0.055, 0.04, 0.08, 16);
+    const torchHead = new THREE.Mesh(torchHeadGeo, new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.3 }));
+    torchHead.rotation.z = Math.PI / 2;
+    torchHead.position.set(0.24, 0, -0.02);
+    torchHead.castShadow = true;
+    torchHead.receiveShadow = true;
+    handGroup.add(torchHead);
+
+    // --- GROTTE (SALLE + PIERRES) ---
+    const caveMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1, metalness: 0 });
 
     // Sol
     const floorGeo = new THREE.PlaneGeometry(20, 20);
     const floor = new THREE.Mesh(floorGeo, caveMaterial);
     floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
     scene.add(floor);
 
     // Plafond
     const ceil = new THREE.Mesh(floorGeo, caveMaterial);
     ceil.rotation.x = Math.PI / 2;
     ceil.position.y = 4;
+    ceil.receiveShadow = true;
     scene.add(ceil);
 
     // Murs
@@ -147,40 +224,85 @@
 
     const wall1 = new THREE.Mesh(wallGeo, caveMaterial);
     wall1.position.set(0, 2, -10);
+    wall1.receiveShadow = true;
     scene.add(wall1);
 
     const wall2 = new THREE.Mesh(wallGeo, caveMaterial);
     wall2.position.set(0, 2, 10);
     wall2.rotation.y = Math.PI;
+    wall2.receiveShadow = true;
     scene.add(wall2);
 
     const wall3 = new THREE.Mesh(wallGeo, caveMaterial);
     wall3.position.set(-10, 2, 0);
     wall3.rotation.y = Math.PI / 2;
+    wall3.receiveShadow = true;
     scene.add(wall3);
 
     const wall4 = new THREE.Mesh(wallGeo, caveMaterial);
     wall4.position.set(10, 2, 0);
     wall4.rotation.y = -Math.PI / 2;
+    wall4.receiveShadow = true;
     scene.add(wall4);
 
-    // --- FRAGMENTS DANS LES COINS ---
+    // Pierres au sol (rochers)
+    const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 1 });
+    const rocks = [];
+    for (let i = 0; i < 30; i++) {
+        const r = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.8),
+            rockMaterial
+        );
+        const x = (Math.random() - 0.5) * 16;
+        const z = (Math.random() - 0.5) * 16;
+        r.position.set(x, 0.2 + Math.random() * 0.2, z);
+        r.castShadow = true;
+        r.receiveShadow = true;
+        scene.add(r);
+        rocks.push(r);
+    }
+
+    // Quelques rochers sur les côtés (comme des parois irrégulières)
+    for (let i = 0; i < 20; i++) {
+        const r = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.6 + Math.random() * 1.2),
+            rockMaterial
+        );
+        const side = Math.random() < 0.5 ? -9 : 9;
+        const z = (Math.random() - 0.5) * 16;
+        const y = 0.5 + Math.random() * 2.5;
+        r.position.set(side + (Math.random() * 0.8 - 0.4), y, z);
+        r.castShadow = true;
+        r.receiveShadow = true;
+        scene.add(r);
+        rocks.push(r);
+    }
+
+    // --- GEMMES (PIERRES PRÉCIEUSES) DANS LES COINS ---
     const fragments = [];
     const fragmentData = [
-        { color: 0x00ff00, position: new THREE.Vector3(-8, 0.5, -8) }, // vert
-        { color: 0xff0000, position: new THREE.Vector3(8, 0.5, -8) },  // rouge
-        { color: 0xffff00, position: new THREE.Vector3(-8, 0.5, 8) },  // jaune
-        { color: 0x0000ff, position: new THREE.Vector3(8, 0.5, 8) }    // bleu
+        { color: 0x00ff88, position: new THREE.Vector3(-8, 0.7, -8) }, // vert
+        { color: 0xff3344, position: new THREE.Vector3(8, 0.7, -8) },  // rouge
+        { color: 0xffee55, position: new THREE.Vector3(-8, 0.7, 8) },  // jaune
+        { color: 0x4488ff, position: new THREE.Vector3(8, 0.7, 8) }    // bleu
     ];
 
-    const fragmentGeo = new THREE.SphereGeometry(0.4, 16, 16);
+    const gemGeo = new THREE.OctahedronGeometry(0.5, 0);
 
     fragmentData.forEach(data => {
-        const mat = new THREE.MeshStandardMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.6 });
-        const mesh = new THREE.Mesh(fragmentGeo, mat);
+        const mat = new THREE.MeshStandardMaterial({
+            color: data.color,
+            emissive: data.color,
+            emissiveIntensity: 0.9,
+            metalness: 0.3,
+            roughness: 0.2
+        });
+        const mesh = new THREE.Mesh(gemGeo, mat);
         mesh.position.copy(data.position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         scene.add(mesh);
-        fragments.push({ mesh, collected: false });
+        fragments.push({ mesh, collected: false, rotSpeed: 0.01 + Math.random() * 0.02 });
     });
 
     let collectedCount = 0;
@@ -188,7 +310,7 @@
     const winDiv = document.getElementById('win');
 
     function updateInfo() {
-        infoDiv.innerHTML = `Fragments trouvés : ${collectedCount}/4<br>Vert, Rouge, Jaune, Bleu`;
+        infoDiv.innerHTML = `Gemmes trouvées : ${collectedCount}/4<br>Verte, Rouge, Jaune, Bleue`;
     }
     updateInfo();
 
@@ -209,7 +331,6 @@
         controlsState[action] = active;
     }
 
-    // Gestion des boutons tactiles
     const buttons = document.querySelectorAll('.btn');
     buttons.forEach(btn => {
         const action = btn.getAttribute('data-action');
@@ -267,19 +388,16 @@
 
             const newPos = playerPosition.clone().add(move);
 
-            // Limites de la grotte (un peu avant les murs)
+            // Limites de la grotte
             const limit = 9;
             newPos.x = Math.max(-limit, Math.min(limit, newPos.x));
             newPos.z = Math.max(-limit, Math.min(limit, newPos.z));
 
             playerPosition.copy(newPos);
         }
-
-        // La lampe suit la caméra
-        lamp.position.copy(camera.position);
     }
 
-    // --- CHECK COLLISION AVEC FRAGMENTS ---
+    // --- CHECK COLLISION AVEC GEMMES ---
     function checkFragments() {
         fragments.forEach(f => {
             if (f.collected) return;
@@ -302,6 +420,13 @@
 
         movePlayer();
         checkFragments();
+
+        // Rotation des gemmes
+        fragments.forEach(f => {
+            if (!f.collected) {
+                f.mesh.rotation.y += f.rotSpeed;
+            }
+        });
 
         renderer.render(scene, camera);
     }
