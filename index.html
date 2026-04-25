@@ -1,323 +1,445 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Gammena – Main réaliste</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #05060a;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-    #info {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      color: #fff;
-      font-size: 14px;
-      z-index: 10;
-      text-shadow: 0 0 6px #000;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Grotte - Jeu 3D Mobile (Torch + Gemmes)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+        }
+
+        #ui {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        #info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-shadow: 0 0 5px #000;
+        }
+
+        #win {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0f0;
+            font-family: Arial, sans-serif;
+            font-size: 28px;
+            text-shadow: 0 0 10px #000;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-<div id="info">ZQSD / WASD pour bouger – souris pour regarder</div>
 
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<div id="info">
+    Trouve les 4 gemmes :<br>
+    Verte, Rouge, Jaune, Bleue
+</div>
+<div id="win">Tu as trouvé toutes les gemmes !</div>
+
+<div id="ui">
+    <!-- Déplacement -->
+    <div class="controls-group">
+        <div class="btn-row">
+            <div class="btn" data-action="forward">▲</div>
+        </div>
+        <div class="btn-row">
+            <div class="btn" data-action="left">◀</div>
+            <div class="btn" data-action="backward">▼</div>
+            <div class="btn" data-action="right">▶</div>
+        </div>
+    </div>
+
+    <!-- Rotation -->
+    <div class="controls-group">
+        <div class="btn-row">
+            <div class="btn" data-action="turnLeft">⟲</div>
+            <div class="btn" data-action="turnRight">⟳</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-  // --- SCÈNE DE BASE ---
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x020308);
+    // --- SCÈNE, CAMÉRA, RENDERER ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
-  const camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
-    0.01,
-    100
-  );
-  camera.position.set(0, 1.6, 2);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  document.body.appendChild(renderer.domElement);
-
-  // --- LUMIÈRE GLOBALE ---
-  const hemiLight = new THREE.HemisphereLight(0x444466, 0x000000, 0.4);
-  scene.add(hemiLight);
-
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.4);
-  dirLight.position.set(5, 10, 2);
-  dirLight.castShadow = true;
-  scene.add(dirLight);
-
-  // --- SOL ---
-  const floorGeo = new THREE.PlaneGeometry(20, 20);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1 });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  // --- PERSONNAGE SIMPLE (corps) ---
-  const playerGroup = new THREE.Group();
-  scene.add(playerGroup);
-
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222a3a, roughness: 0.7, metalness: 0.1 });
-
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.2), bodyMat);
-  torso.position.set(0, 1.3, 0);
-  torso.castShadow = true;
-  playerGroup.add(torso);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), bodyMat);
-  head.position.set(0, 1.8, 0);
-  head.castShadow = true;
-  playerGroup.add(head);
-
-  // --- GROUPE LAMPE + MAIN (attaché à la caméra pour vue FPS) ---
-  const torchGroup = new THREE.Group();
-  camera.add(torchGroup);
-  scene.add(camera);
-
-  torchGroup.position.set(0.25, -0.25, -0.6);
-  torchGroup.rotation.x = -0.2;
-  torchGroup.rotation.y = 0.2;
-
-  // --- LAMPE ---
-  const torchMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
-
-  const torchBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.05, 0.35, 16),
-    torchMat
-  );
-  torchBody.rotation.z = Math.PI / 2;
-  torchBody.position.set(0, 0, 0);
-  torchBody.castShadow = true;
-  torchGroup.add(torchBody);
-
-  const torchHead = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.09, 0.12, 16),
-    torchMat
-  );
-  torchHead.rotation.z = Math.PI / 2;
-  torchHead.position.set(0.18, 0, 0);
-  torchHead.castShadow = true;
-  torchGroup.add(torchHead);
-
-  const lightColor = 0xfff2c5;
-  const spot = new THREE.SpotLight(lightColor, 2.2, 12, Math.PI / 5, 0.4, 1.2);
-  spot.position.set(0.22, 0, 0);
-  spot.target.position.set(3, -0.2, -2);
-  torchGroup.add(spot);
-  torchGroup.add(spot.target);
-  spot.castShadow = true;
-
-  const glowGeo = new THREE.SphereGeometry(0.06, 16, 16);
-  const glowMat = new THREE.MeshBasicMaterial({ color: lightColor, transparent: true, opacity: 0.6 });
-  const glow = new THREE.Mesh(glowGeo, glowMat);
-  glow.position.set(0.24, 0, 0);
-  torchGroup.add(glow);
-
-  // --- MAIN RÉALISTE (VERSION B) ---
-  const handGroup = new THREE.Group();
-  handGroup.position.set(0.02, -0.02, -0.02);
-  handGroup.rotation.x = -0.1;
-  handGroup.rotation.y = -0.4;
-  torchGroup.add(handGroup);
-
-  const skinColor = 0xd9b08c;
-  const skinMat = new THREE.MeshStandardMaterial({
-    color: skinColor,
-    roughness: 0.55,
-    metalness: 0.05
-  });
-
-  // Paume plus fine, proportions humaines
-  const palmGeo = new THREE.BoxGeometry(0.16, 0.08, 0.11);
-  const palm = new THREE.Mesh(palmGeo, skinMat);
-  palm.castShadow = true;
-  palm.receiveShadow = true;
-  palm.position.set(0, -0.02, 0.03);
-  handGroup.add(palm);
-
-  // Poignet plus naturel
-  const wrist = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.045, 0.12, 12),
-    skinMat
-  );
-  wrist.position.set(-0.08, -0.01, 0.0);
-  wrist.rotation.z = Math.PI / 2.4;
-  wrist.castShadow = true;
-  handGroup.add(wrist);
-
-  // Fonction pour créer un doigt fin avec 3 phalanges
-  function createFinger(options) {
-    const {
-      baseX,
-      baseY,
-      baseZ,
-      length1,
-      length2,
-      length3,
-      radiusBase,
-      radiusTip,
-      spreadRotZ,
-      curl = 0.0
-    } = options;
-
-    const fingerGroup = new THREE.Group();
-    fingerGroup.position.set(baseX, baseY, baseZ);
-    fingerGroup.rotation.z = spreadRotZ;
-    handGroup.add(fingerGroup);
-
-    const seg1 = new THREE.Mesh(
-      new THREE.CylinderGeometry(radiusBase, radiusBase * 0.95, length1, 10),
-      skinMat
+    const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
     );
-    seg1.rotation.x = Math.PI / 2;
-    seg1.position.set(0, 0, length1 * 0.5);
-    seg1.castShadow = true;
-    fingerGroup.add(seg1);
+    camera.position.set(0, 1.6, 0); // hauteur "humaine"
 
-    const seg2Group = new THREE.Group();
-    seg2Group.position.set(0, 0, length1);
-    seg2Group.rotation.x = curl * 0.6;
-    fingerGroup.add(seg2Group);
-
-    const seg2 = new THREE.Mesh(
-      new THREE.CylinderGeometry(radiusBase * 0.95, radiusBase * 0.8, length2, 10),
-      skinMat
-    );
-    seg2.rotation.x = Math.PI / 2;
-    seg2.position.set(0, 0, length2 * 0.5);
-    seg2.castShadow = true;
-    seg2Group.add(seg2);
-
-    const seg3Group = new THREE.Group();
-    seg3Group.position.set(0, 0, length2);
-    seg3Group.rotation.x = curl * 0.9;
-    seg2Group.add(seg3Group);
-
-    const seg3 = new THREE.Mesh(
-      new THREE.CylinderGeometry(radiusBase * 0.8, radiusTip, length3, 10),
-      skinMat
-    );
-    seg3.rotation.x = Math.PI / 2;
-    seg3.position.set(0, 0, length3 * 0.5);
-    seg3.castShadow = true;
-    seg3Group.add(seg3);
-
-    // Légère sphère au bout (pulpe)
-    const tip = new THREE.Mesh(
-      new THREE.SphereGeometry(radiusTip * 1.05, 10, 10),
-      skinMat
-    );
-    tip.position.set(0, 0, length3);
-    tip.castShadow = true;
-    seg3Group.add(tip);
-
-    return fingerGroup;
-  }
-
-  // Paramètres de longueur (environ proportions humaines, mais stylisées)
-  const baseY = 0.01;
-  const baseZ = 0.06;
-
-  // Pouce (plus court, plus sur le côté, incliné)
-  createFinger({
-    baseX: -0.06,
-    baseY: -0.015,
-    baseZ: 0.02,
-    length1: 0.035,
-    length2: 0.03,
-    length3: 0.025,
-    radiusBase: 0.015,
-    radiusTip: 0.011,
-    spreadRotZ: -0.9,
-    curl: 0.4
-  });
-
-  // Index
-  createFinger({
-    baseX: -0.03,
-    baseY,
-    baseZ,
-    length1: 0.045,
-    length2: 0.035,
-    length3: 0.03,
-    radiusBase: 0.013,
-    radiusTip: 0.009,
-    spreadRotZ: -0.25,
-    curl: 0.35
-  });
-
-  // Majeur
-  createFinger({
-    baseX: 0.0,
-    baseY,
-    baseZ,
-    length1: 0.05,
-    length2: 0.04,
-    length3: 0.032,
-    radiusBase: 0.014,
-    radiusTip: 0.009,
-    spreadRotZ: -0.05,
-    curl: 0.3
-  });
-
-  // Annulaire
-  createFinger({
-    baseX: 0.03,
-    baseY,
-    baseZ,
-    length1: 0.047,
-    length2: 0.037,
-    length3: 0.03,
-    radiusBase: 0.013,
-    radiusTip: 0.009,
-    spreadRotZ: 0.12,
-    curl: 0.32
-  });
-
-  // Auriculaire
-  createFinger({
-    baseX: 0.055,
-    baseY,
-    baseZ: baseZ - 0.005,
-    length1: 0.04,
-    length2: 0.032,
-    length3: 0.026,
-    radiusBase: 0.011,
-    radiusTip: 0.008,
-    spreadRotZ: 0.3,
-    curl: 0.38
-  });
-
-  // --- CONTROLES SIMPLES (juste une petite rotation caméra pour tester) ---
-  let angle = 0;
-
-  function animate() {
-    requestAnimationFrame(animate);
-
-    angle += 0.002;
-    playerGroup.position.z = Math.sin(angle) * 0.2;
-    playerGroup.position.x = Math.cos(angle) * 0.2;
-
-    renderer.render(scene, camera);
-  }
-
-  animate();
-
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- LUMIÈRE AMBIANTE FAIBLE ---
+    const ambient = new THREE.AmbientLight(0x222222, 0.4);
+    scene.add(ambient);
+
+    // --- LAMPE TORCHE (SPOTLIGHT + POINTLIGHT) ---
+    const torchGroup = new THREE.Group();
+    camera.add(torchGroup);
+    scene.add(camera);
+
+    const torchSpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 6, 0.4, 1.5);
+    torchSpot.castShadow = true;
+    torchSpot.shadow.mapSize.width = 1024;
+    torchSpot.shadow.mapSize.height = 1024;
+    torchSpot.position.set(0.2, -0.1, -0.3);
+    torchGroup.add(torchSpot);
+
+    const torchTarget = new THREE.Object3D();
+    torchTarget.position.set(0, -0.1, -2);
+    torchGroup.add(torchTarget);
+    torchSpot.target = torchTarget;
+
+    const torchPoint = new THREE.PointLight(0xfff4d0, 0.6, 5);
+    torchPoint.position.set(0.2, -0.1, -0.3);
+    torchGroup.add(torchPoint);
+
+    // --- MAIN STYLISÉE QUI TIENT LA LAMPE ---
+    const handGroup = new THREE.Group();
+    handGroup.position.set(0.25, -0.25, -0.6);
+    handGroup.rotation.x = -0.3;
+    torchGroup.add(handGroup);
+
+    const skinColor = 0xd8b090;
+
+    // Paume
+    const palmGeo = new THREE.BoxGeometry(0.18, 0.1, 0.12);
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+    const palm = new THREE.Mesh(palmGeo, skinMat);
+    palm.castShadow = true;
+    palm.receiveShadow = true;
+    handGroup.add(palm);
+
+    // Doigts (4 blocs)
+    const fingerGeo = new THREE.BoxGeometry(0.04, 0.09, 0.06);
+    const fingerOffsets = [-0.06, -0.02, 0.02, 0.06];
+    fingerOffsets.forEach(x => {
+        const f = new THREE.Mesh(fingerGeo, skinMat);
+        f.position.set(x, -0.05, 0.03);
+        f.castShadow = true;
+        f.receiveShadow = true;
+        handGroup.add(f);
+    });
+
+    // Poignet
+    const wristGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const wrist = new THREE.Mesh(wristGeo, skinMat);
+    wrist.position.set(0, 0.09, -0.02);
+    wrist.castShadow = true;
+    wrist.receiveShadow = true;
+    handGroup.add(wrist);
+
+    // Lampe torche (simple cylindre + tête)
+    const torchBodyGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 16);
+    const torchMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.4, roughness: 0.4 });
+    const torchBody = new THREE.Mesh(torchBodyGeo, torchMat);
+    torchBody.rotation.z = Math.PI / 2;
+    torchBody.position.set(0.12, 0, -0.02);
+    torchBody.castShadow = true;
+    torchBody.receiveShadow = true;
+    handGroup.add(torchBody);
+
+    const torchHeadGeo = new THREE.CylinderGeometry(0.055, 0.04, 0.08, 16);
+    const torchHead = new THREE.Mesh(torchHeadGeo, new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.3 }));
+    torchHead.rotation.z = Math.PI / 2;
+    torchHead.position.set(0.24, 0, -0.02);
+    torchHead.castShadow = true;
+    torchHead.receiveShadow = true;
+    handGroup.add(torchHead);
+
+    // --- GROTTE (SALLE + PIERRES) ---
+    const caveMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1, metalness: 0 });
+
+    // Sol
+    const floorGeo = new THREE.PlaneGeometry(20, 20);
+    const floor = new THREE.Mesh(floorGeo, caveMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Plafond
+    const ceil = new THREE.Mesh(floorGeo, caveMaterial);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.y = 4;
+    ceil.receiveShadow = true;
+    scene.add(ceil);
+
+    // Murs
+    const wallGeo = new THREE.PlaneGeometry(20, 4);
+
+    const wall1 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall1.position.set(0, 2, -10);
+    wall1.receiveShadow = true;
+    scene.add(wall1);
+
+    const wall2 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall2.position.set(0, 2, 10);
+    wall2.rotation.y = Math.PI;
+    wall2.receiveShadow = true;
+    scene.add(wall2);
+
+    const wall3 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall3.position.set(-10, 2, 0);
+    wall3.rotation.y = Math.PI / 2;
+    wall3.receiveShadow = true;
+    scene.add(wall3);
+
+    const wall4 = new THREE.Mesh(wallGeo, caveMaterial);
+    wall4.position.set(10, 2, 0);
+    wall4.rotation.y = -Math.PI / 2;
+    wall4.receiveShadow = true;
+    scene.add(wall4);
+
+    // Pierres au sol (rochers)
+    const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 1 });
+    const rocks = [];
+    for (let i = 0; i < 30; i++) {
+        const r = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.8),
+            rockMaterial
+        );
+        const x = (Math.random() - 0.5) * 16;
+        const z = (Math.random() - 0.5) * 16;
+        r.position.set(x, 0.2 + Math.random() * 0.2, z);
+        r.castShadow = true;
+        r.receiveShadow = true;
+        scene.add(r);
+        rocks.push(r);
+    }
+
+    // Quelques rochers sur les côtés (comme des parois irrégulières)
+    for (let i = 0; i < 20; i++) {
+        const r = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.6 + Math.random() * 1.2),
+            rockMaterial
+        );
+        const side = Math.random() < 0.5 ? -9 : 9;
+        const z = (Math.random() - 0.5) * 16;
+        const y = 0.5 + Math.random() * 2.5;
+        r.position.set(side + (Math.random() * 0.8 - 0.4), y, z);
+        r.castShadow = true;
+        r.receiveShadow = true;
+        scene.add(r);
+        rocks.push(r);
+    }
+
+    // --- GEMMES (PIERRES PRÉCIEUSES) DANS LES COINS ---
+    const fragments = [];
+    const fragmentData = [
+        { color: 0x00ff88, position: new THREE.Vector3(-8, 0.7, -8) }, // vert
+        { color: 0xff3344, position: new THREE.Vector3(8, 0.7, -8) },  // rouge
+        { color: 0xffee55, position: new THREE.Vector3(-8, 0.7, 8) },  // jaune
+        { color: 0x4488ff, position: new THREE.Vector3(8, 0.7, 8) }    // bleu
+    ];
+
+    const gemGeo = new THREE.OctahedronGeometry(0.5, 0);
+
+    fragmentData.forEach(data => {
+        const mat = new THREE.MeshStandardMaterial({
+            color: data.color,
+            emissive: data.color,
+            emissiveIntensity: 0.9,
+            metalness: 0.3,
+            roughness: 0.2
+        });
+        const mesh = new THREE.Mesh(gemGeo, mat);
+        mesh.position.copy(data.position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        fragments.push({ mesh, collected: false, rotSpeed: 0.01 + Math.random() * 0.02 });
+    });
+
+    let collectedCount = 0;
+    const infoDiv = document.getElementById('info');
+    const winDiv = document.getElementById('win');
+
+    function updateInfo() {
+        infoDiv.innerHTML = `Gemmes trouvées : ${collectedCount}/4<br>Verte, Rouge, Jaune, Bleue`;
+    }
+    updateInfo();
+
+    // --- CONTRÔLES MOBILES ---
+    const controlsState = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        turnLeft: false,
+        turnRight: false
+    };
+
+    const speed = 0.08;
+    const rotSpeed = 0.04;
+
+    function setControl(action, active) {
+        controlsState[action] = active;
+    }
+
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        const action = btn.getAttribute('data-action');
+
+        const start = (e) => {
+            e.preventDefault();
+            setControl(action, true);
+        };
+        const end = (e) => {
+            e.preventDefault();
+            setControl(action, false);
+        };
+
+        btn.addEventListener('touchstart', start);
+        btn.addEventListener('touchend', end);
+        btn.addEventListener('touchcancel', end);
+
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('mouseleave', end);
+    });
+
+    // --- MOUVEMENT DU JOUEUR ---
+    const playerPosition = camera.position;
+    let playerRotationY = 0;
+
+    function movePlayer() {
+        // Rotation
+        if (controlsState.turnLeft) {
+            playerRotationY += rotSpeed;
+        }
+        if (controlsState.turnRight) {
+            playerRotationY -= rotSpeed;
+        }
+
+        camera.rotation.set(0, playerRotationY, 0);
+
+        // Direction avant
+        const forward = new THREE.Vector3(
+            -Math.sin(playerRotationY),
+            0,
+            -Math.cos(playerRotationY)
+        );
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate();
+
+        let move = new THREE.Vector3();
+
+        if (controlsState.forward) move.add(forward);
+        if (controlsState.backward) move.sub(forward);
+        if (controlsState.left) move.sub(right);
+        if (controlsState.right) move.add(right);
+
+        if (move.lengthSq() > 0) {
+            move.normalize().multiplyScalar(speed);
+
+            const newPos = playerPosition.clone().add(move);
+
+            // Limites de la grotte
+            const limit = 9;
+            newPos.x = Math.max(-limit, Math.min(limit, newPos.x));
+            newPos.z = Math.max(-limit, Math.min(limit, newPos.z));
+
+            playerPosition.copy(newPos);
+        }
+    }
+
+    // --- CHECK COLLISION AVEC GEMMES ---
+    function checkFragments() {
+        fragments.forEach(f => {
+            if (f.collected) return;
+            const dist = f.mesh.position.distanceTo(camera.position);
+            if (dist < 1.2) {
+                f.collected = true;
+                scene.remove(f.mesh);
+                collectedCount++;
+                updateInfo();
+                if (collectedCount === 4) {
+                    winDiv.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    // --- ANIMATION ---
+    function animate() {
+        requestAnimationFrame(animate);
+
+        movePlayer();
+        checkFragments();
+
+        // Rotation des gemmes
+        fragments.forEach(f => {
+            if (!f.collected) {
+                f.mesh.rotation.y += f.rotSpeed;
+            }
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // --- ADAPTATION ÉCRAN ---
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 </script>
+
 </body>
 </html>
