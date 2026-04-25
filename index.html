@@ -127,13 +127,16 @@
     // --- LUMIÈRE AMBIANTE FAIBLE ---
     const ambient = new THREE.AmbientLight(0x222222, 0.4);
     scene.add(ambient);
+    const dimLight = new THREE.DirectionalLight(0xffffff, 0.15);
+    dimLight.position.set(3, 5, 2);
+    scene.add(dimLight);
 
     // --- LAMPE TORCHE (SPOTLIGHT + POINTLIGHT) ---
     const torchGroup = new THREE.Group();
     camera.add(torchGroup);
     scene.add(camera);
 
-    const torchSpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 6, 0.4, 1.5);
+    const torchSpot = new THREE.SpotLight(0xffffff, 4.5, 35, Math.PI / 7, 0.35, 1.2);
     torchSpot.castShadow = true;
     torchSpot.shadow.mapSize.width = 1024;
     torchSpot.shadow.mapSize.height = 1024;
